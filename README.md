@@ -1,11 +1,11 @@
-# Agent Builder
+# Forge Agent Builder
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## Table of Contents
 
 - [Overview](#overview)
-- [What is Agent Builder?](#what-is-agent-builder)
+- [What is Forge Agent Builder?](#what-is-forge-agent-builder)
 - [Core Components](#core-components)
 - [Quick Start](#quick-start)
 - [Agent Development Workflow](#agent-development-workflow)
@@ -14,50 +14,47 @@
 
 ## Overview
 
-**Agent Builder** is a framework for rapidly designing, specifying, planning, and implementing autonomous AI agents. It provides a structured workflow and collection of prompts/templates to guide teams through the entire agent development lifecycle.
+**Forge Agent Builder** is a framework for rapidly designing, specifying, planning, and implementing autonomous AI agents. It provides a structured workflow and collection of prompts/templates to guide teams through the entire agent development lifecycle.
 
-Rather than starting from scratch, Agent Builder gives you a proven methodology to:
-- Clarify agent requirements and success criteria
-- Specify agent behavior, tone, and capabilities
-- Plan architecture and implementation details
-- Implement and test the agent
-- Generate comprehensive documentation
+Rather than starting from scratch, Forge Agent Builder gives you a proven methodology to:
+- **Specify** agent behavior, tone, and capabilities
+- **Clarify** agent requirements and success criteria
+- **Plan** architecture and implementation details
+- **Tasks** for the implementation
+- **Implement** and test the agent
+- **Generate** comprehensive documentation
 
-## What is Agent Builder?
+## What is Forge Agent Builder?
 
-Agent Builder is not a single agent—it's a **meta-framework** consisting of:
+Forge Agent Builder is not a single agent—it's a **meta-framework** consisting of:
 
-1. **Forge Agent Suite**: Specialized agents (Clarify, Specify, Plan, Implement, Tasks)
-2. **Prompt Library**: Pre-written instructions for each agent
+1. **Forge Agent Suite**: Specialized agents (Specify, Clarify, Plan, Tasks, Implement)
+2. **Prompt Library**: Prompts that trigger each agent
 3. **Agent Templates**: Starting templates for different agent patterns
 4. **Documentation Generators**: Automated README and documentation creation
 
-## Tech Stack
-
-- **Prompt Management**: Markdown-based prompt templates in `.github/prompts/`
-- **Documentation**: Automated README generation via Forge agents
-
 ## Core Components
-
-### `.github/prompts/` - Agent Prompts
-
-Pre-written prompts that guide each Forge agent:
-
-- **`forge.agent.clarify.prompt.md`**: Questions and methodology for clarifying agent requirements
-- **`forge.agent.specify.prompt.md`**: Instructions for specifying detailed agent behavior and capabilities
-- **`forge.agent.plan.prompt.md`**: Architecture and technical planning guidance
-- **`forge.agent.implement.prompt.md`**: Code generation and implementation strategy
-- **`forge.agent.tasks.prompt.md`**: Task breakdown and milestone planning
 
 ### `.github/agents/` - Agent Definitions
 
 Agent configuration and definition files:
 
-- **`forge.agent.clarify.agent.md`**: Clarify agent definition
 - **`forge.agent.specify.agent.md`**: Specify agent definition
+- **`forge.agent.clarify.agent.md`**: Clarify agent definition
 - **`forge.agent.plan.agent.md`**: Plan agent definition
-- **`forge.agent.implement.agent.md`**: Implement agent definition
 - **`forge.agent.tasks.agent.md`**: Tasks agent definition
+- **`forge.agent.implement.agent.md`**: Implement agent definition
+
+### `.github/prompts/` - Agent Prompts
+
+Prompts that trigger each agent:
+
+- **`forge.agent.specify.prompt.md`**: Instructions for specifying detailed agent behavior and capabilities
+- **`forge.agent.clarify.prompt.md`**: Questions and methodology for clarifying agent requirements
+- **`forge.agent.plan.prompt.md`**: Architecture and technical planning guidance
+- **`forge.agent.tasks.prompt.md`**: Task breakdown and milestone planning
+- **`forge.agent.implement.prompt.md`**: Code generation and implementation strategy
+
 
 ### `.agent-builder/templates/` - Agent Templates
 
@@ -76,21 +73,25 @@ Starting templates for building new agents:
    cp .agent-builder/templates/basic-agent.template.md agent-specs/my-agent/spec.md
    ```
 
-2. **Use Nexus Clarify Agent** to refine requirements:
-   - Ask clarifying questions about agent purpose, scope, and constraints
-   - Document acceptance criteria and edge cases
-
 3. **Use Nexus Specify Agent** to detail behavior:
    - Define agent persona and communication style
    - List capabilities and tools
    - Specify success metrics
+
+3. **Use Nexus Clarify Agent** to refine requirements:
+   - Ask clarifying questions about agent purpose, scope, and constraints
+   - Document acceptance criteria and edge cases
 
 4. **Use Nexus Plan Agent** to design architecture:
    - Plan state management and data flow
    - Define nodes/graph structure
    - Design tool schemas
 
-5. **Use Nexus Implement Agent** to generate code:
+5. **Use Nexus Tasks Agent** to break down implementation:
+   - Create a task list and milestones
+   - Assign priorities and dependencies
+
+6. **Use Nexus Implement Agent** to generate code:
    - Generate Python agent implementation
    - Create unit and integration tests
    - Produce documentation
@@ -100,24 +101,28 @@ Starting templates for building new agents:
 The typical Agent Builder workflow:
 
 ```
-1. CLARIFY
-   └─> What problem does this agent solve?
-       What are the constraints?
-       
-2. SPECIFY
+1. SPECIFY
    └─> What is the agent's personality?
        What capabilities does it need?
-       
+
+2. CLARIFY
+   └─> What problem does this agent solve?
+       What are the constraints?
+            
 3. PLAN
    └─> What is the architecture?
        How should data flow?
-       
-4. IMPLEMENT
+
+4. TASKS
+   └─> What are the implementation steps?
+       What are the milestones?
+
+5. IMPLEMENT
    └─> Generate the code
        Write tests
        
-5. DOCUMENT
-   └─> Auto-generate README
+6. DOCUMENT
+   └─> Auto-generate README (`forge-document-readme.prompt.md`)
        Update specifications
 ```
 
