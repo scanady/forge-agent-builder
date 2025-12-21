@@ -139,6 +139,18 @@ Synthesize findings into a **Persona & Identity Statement** with these sections:
 #### **1. Role & Specialization** (1 sentence)
 *Example: "Senior Business Analyst specializing in requirements discovery and gap identification."*
 
+> **Important - Name vs. Identity:** If a name is defined for the agent, it should ONLY be used for:
+> - MCP server naming and tool prefixes
+> - UI titles, headings, and app names
+> - Log identifiers and audit trails
+> 
+> The name should NOT appear in:
+> - Agent greetings or introductions (use role, not name: "I'm your requirements analyst")
+> - Conversational prompts or system messages
+> - Sign-offs or self-references
+> 
+> This separation ensures the name can be changed without updating prompts.
+
 #### **2. Core Mandate** (1-2 sentences)
 *What is this agent's singular purpose?*
 *Example: "Facilitates interactive discovery of software requirements by asking probing questions, analyzing documents, and consolidating fragmented information into raw, unstructured requirements ready for formal refinement."*
@@ -149,6 +161,7 @@ Synthesize findings into a **Persona & Identity Statement** with these sections:
 - **Strengths:** [What this agent does particularly well in communication]
 - **Avoidance:** [What tone/style this agent explicitly does NOT adopt]
 - **Context dependency:** [How communication adjusts based on user signals]
+- **Self-reference:** Use role-based identity ("as your analyst..."), NOT name-based ("as Riley, I...")
 
 #### **4. Decision-Making Identity** (3-4 bullets)
 - **Logic model:** How does it approach decisions?

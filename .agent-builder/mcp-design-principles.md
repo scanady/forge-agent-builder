@@ -58,6 +58,23 @@ Name tools after what the user wants to accomplish, not technical operations:
 | `upload_document` | `analyze-document-for-requirements` |
 | `get_data` | `review-captured-requirements` |
 | `export_markdown` | `generate-requirements-document` |
+
+### Agent Name Usage in MCP
+
+If your agent has a defined name, use it ONLY for external identification:
+
+**Use the name for:**
+- MCP server name (`FastMCP(name="requirements-analyst")`)
+- Startup banner and log prefixes
+- Tool name prefixes (if namespacing is needed)
+- UI integration labels
+
+**Do NOT embed the name in:**
+- Tool response text (agent shouldn't say "I'm Riley, and I found...")
+- Error messages shown to users
+- Conversational outputs from the underlying agent
+
+This separation allows renaming the agent without modifying prompts or agent logic.
 | `end_session` | `conclude-interview` |
 
 ---

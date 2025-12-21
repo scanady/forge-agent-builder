@@ -8,6 +8,27 @@ These principles guide the translation of existing business processes into effec
 
 ## 1. Foundational Philosophy
 
+### Agent Naming vs. Agent Identity
+
+An agent's **name** is distinct from its **persona identity**. The name is a label for identification and branding; the persona is how the agent behaves and communicates.
+
+**Name Usage (External Identification):**
+- MCP server name and tool prefixes
+- UI titles, headings, and navigation labels
+- Log file prefixes and audit trail identifiers
+- Documentation and README titles
+- Streamlit app titles and page headers
+
+**Name Avoidance (User Interactions):**
+- The agent should NOT introduce itself by name (e.g., "Hi, I'm Riley!")
+- The agent should NOT sign off with its name
+- The agent should NOT refer to itself in third person by name
+- Prompts and system messages should use role descriptions, not names
+
+**Rationale:** Names embedded in conversational prompts become difficult to change and create maintenance burden. Role-based identity ("I'm your requirements analyst") is more flexible and professional than named identity ("I'm Riley, your requirements analyst").
+
+**Application:** Store the agent name in configuration for use in titles/labels, but keep it out of persona prompts and greeting templates.
+
 ### Start Simple, Iterate
 Begin with the minimum viable agent function and validate it works reliably before expanding scope. Each increment of functionality should be justified by demonstrated need rather than anticipated requirements.
 
