@@ -25,14 +25,14 @@ A professional requirements analyst that helps discover, capture, and document
 software requirements through structured interviews and document analysis.
 
 Workflow:
-1. Begin with 'Begin Requirements Interview' to start a new elicitation session
-2. Use 'Discuss Requirements' to have a conversation - describe your project, features, 
+1. Begin with 'begin-requirements-interview' to start a new elicitation session
+2. Use 'discuss-requirements' to have a conversation - describe your project, features, 
    user needs, constraints, etc. The analyst will ask clarifying questions and capture requirements
-3. Use 'Analyze Document for Requirements' to extract requirements from existing documents
+3. Use 'analyze-document-for-requirements' to extract requirements from existing documents
    like meeting notes, specs, or user stories
-4. Use 'Review Captured Requirements' anytime to see what's been discovered so far
-5. Use 'Generate Requirements Document' to get a formatted requirements specification
-6. Use 'Conclude Interview' when done
+4. Use 'review-captured-requirements' anytime to see what's been discovered so far
+5. Use 'generate-requirements-document' to get a formatted requirements specification
+6. Use 'conclude-interview' when done
 
 Focuses on discovering WHAT the system should do (functional requirements) and 
 HOW WELL it should perform (non-functional requirements), while deferring implementation 
@@ -59,10 +59,8 @@ def _get_or_create_session(session_id: Optional[str] = None) -> tuple[str, any, 
 
 
 @mcp.tool(
-    name="Begin Requirements Interview",
-    title="Start a new requirements elicitation session",
-    description="Initiates a collaborative interview to discover and document software requirements through structured conversation",
-    tags=["requirements", "interview", "session", "start"]
+    name="begin-requirements-interview",
+    description="Initiates a collaborative interview to discover and document software requirements through structured conversation"
 )
 def begin_requirements_interview(project_name: Optional[str] = None) -> dict:
     """
@@ -98,15 +96,13 @@ def begin_requirements_interview(project_name: Optional[str] = None) -> dict:
     return {
         "session_id": session_id,
         "greeting": response_text,
-        "next_step": "Use 'Discuss Requirements' to describe your project and continue the conversation"
+        "next_step": "Use 'discuss-requirements' to describe your project and continue the conversation"
     }
 
 
 @mcp.tool(
-    name="Discuss Requirements",
-    title="Continue the requirements conversation",
-    description="Share project details, answer questions, and discuss features. The analyst will ask clarifying questions and capture requirements as you talk.",
-    tags=["requirements", "conversation", "discovery", "elicitation"]
+    name="discuss-requirements",
+    description="Share project details, answer questions, and discuss features. The analyst will ask clarifying questions and capture requirements as you talk."
 )
 def elicit_requirements(session_id: str, message: str) -> dict:
     """
@@ -119,7 +115,7 @@ def elicit_requirements(session_id: str, message: str) -> dict:
     - Capture requirements in a structured format
     
     Args:
-        session_id: The session ID from 'Begin Requirements Interview'.
+        session_id: The session ID from 'begin-requirements-interview'.
         message: Describe your needs, answer questions, or ask for clarification.
     
     Returns:
@@ -128,7 +124,7 @@ def elicit_requirements(session_id: str, message: str) -> dict:
     """
     if session_id not in _sessions:
         return {
-            "error": f"No active interview found. Start with 'Begin Requirements Interview' first.",
+            "error": f"No active interview found. Start with 'begin-requirements-interview' first.",
             "response": None,
             "requirements_discovered": 0
         }
@@ -154,10 +150,8 @@ def elicit_requirements(session_id: str, message: str) -> dict:
 
 
 @mcp.tool(
-    name="Analyze Document for Requirements",
-    title="Extract requirements from a document",
-    description="Upload meeting notes, specs, user stories, or other documents to analyze and extract requirements automatically",
-    tags=["requirements", "document", "extraction", "analysis"]
+    name="analyze-document-for-requirements",
+    description="Upload meeting notes, specs, user stories, or other documents to analyze and extract requirements automatically"
 )
 def analyze_document_for_requirements(session_id: str, document_name: str, document_content: str) -> dict:
     """
@@ -171,7 +165,7 @@ def analyze_document_for_requirements(session_id: str, document_name: str, docum
     - Competitor analysis or research notes
     
     Args:
-        session_id: The session ID from 'Begin Requirements Interview'.
+        session_id: The session ID from 'begin-requirements-interview'.
         document_name: Name/title of the document (e.g., "kickoff-meeting-notes.md").
         document_content: The full text content of the document.
     
@@ -181,7 +175,7 @@ def analyze_document_for_requirements(session_id: str, document_name: str, docum
     """
     if session_id not in _sessions:
         return {
-            "error": f"No active interview found. Start with 'Begin Requirements Interview' first.",
+            "error": f"No active interview found. Start with 'begin-requirements-interview' first.",
             "analysis": None,
             "requirements_discovered": 0
         }
@@ -217,10 +211,8 @@ def analyze_document_for_requirements(session_id: str, document_name: str, docum
 
 
 @mcp.tool(
-    name="Review Captured Requirements",
-    title="See all requirements discovered so far",
-    description="View the complete list of requirements captured from your conversation and documents, organized by category",
-    tags=["requirements", "review", "list", "progress"]
+    name="review-captured-requirements",
+    description="View the complete list of requirements captured from your conversation and documents, organized by category"
 )
 def review_captured_requirements(session_id: str) -> dict:
     """
@@ -231,7 +223,7 @@ def review_captured_requirements(session_id: str) -> dict:
     recorded before generating the final document.
     
     Args:
-        session_id: The session ID from 'Begin Requirements Interview'.
+        session_id: The session ID from 'begin-requirements-interview'.
     
     Returns:
         - requirements: List of all captured requirements
@@ -240,7 +232,7 @@ def review_captured_requirements(session_id: str) -> dict:
     """
     if session_id not in _sessions:
         return {
-            "error": f"No active interview found. Start with 'Begin Requirements Interview' first.",
+            "error": f"No active interview found. Start with 'begin-requirements-interview' first.",
             "requirements": [],
             "count": 0
         }
@@ -274,10 +266,8 @@ def review_captured_requirements(session_id: str) -> dict:
 
 
 @mcp.tool(
-    name="Generate Requirements Document",
-    title="Create a formatted requirements specification",
-    description="Generate a professional requirements document suitable for stakeholder review or development handoff, organized by category",
-    tags=["requirements", "document", "export", "specification"]
+    name="generate-requirements-document",
+    description="Generate a professional requirements document suitable for stakeholder review or development handoff, organized by category"
 )
 def generate_requirements_document(session_id: str, format: str = "markdown") -> dict:
     """
@@ -288,7 +278,7 @@ def generate_requirements_document(session_id: str, format: str = "markdown") ->
     or development handoff.
     
     Args:
-        session_id: The session ID from 'Begin Requirements Interview'.
+        session_id: The session ID from 'begin-requirements-interview'.
         format: Output format - currently supports "markdown" (default).
     
     Returns:
@@ -297,7 +287,7 @@ def generate_requirements_document(session_id: str, format: str = "markdown") ->
     """
     if session_id not in _sessions:
         return {
-            "error": f"No active interview found. Start with 'Begin Requirements Interview' first.",
+            "error": f"No active interview found. Start with 'begin-requirements-interview' first.",
             "document": None,
             "requirements_count": 0
         }
@@ -325,10 +315,8 @@ def generate_requirements_document(session_id: str, format: str = "markdown") ->
 
 
 @mcp.tool(
-    name="Conclude Interview",
-    title="End the requirements session",
-    description="Complete the interview and clean up session resources. Make sure to save the requirements document first.",
-    tags=["session", "end", "cleanup"]
+    name="conclude-interview",
+    description="Complete the interview and clean up session resources. Make sure to save the requirements document first."
 )
 def conclude_interview(session_id: str) -> dict:
     """
@@ -389,12 +377,12 @@ if __name__ == "__main__":
         log("Transport:   stdio (standard input/output)")
     log()
     log("Available Tools:")
-    log("  - Begin Requirements Interview     - Start a new elicitation session")
-    log("  - Discuss Requirements             - Discover requirements through conversation")
-    log("  - Analyze Document for Requirements - Extract requirements from documents")
-    log("  - Review Captured Requirements     - See what's been captured")
-    log("  - Generate Requirements Document   - Create formatted spec document")
-    log("  - Conclude Interview               - End the session")
+    log("  - begin-requirements-interview      - Start a new elicitation session")
+    log("  - discuss-requirements              - Discover requirements through conversation")
+    log("  - analyze-document-for-requirements - Extract requirements from documents")
+    log("  - review-captured-requirements      - See what's been captured")
+    log("  - generate-requirements-document    - Create formatted spec document")
+    log("  - conclude-interview                - End the session")
     log()
     if use_sse:
         log("Connect to this server using the SSE URL above.")

@@ -1,8 +1,11 @@
+# 0
+I want to build a life insurance product management system. Help me with the requirements.
+
 # 1
 I want a life insurance product management system that helps create and manage life insurance products.
 
 # 2
-the main user is me. I am the product manager. other groups like compliance, marketing and underwriting will review the information in the system. There will also be integrations with other applications to provide product information, perform quotes, etc.
+I am the primary user. I am the product manager. other groups like compliance, marketing and underwriting will review the information in the system. There will also be integrations with other applications to provide product information, perform quotes, etc.
 
 # 3
 I need to configure a new insurance product by creating the product 'shell'. The 'shell' includes all the basic information about the product, including name, description, target market, demographics, type of product, age limits, coverage limits, etc.

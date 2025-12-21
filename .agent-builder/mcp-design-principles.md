@@ -6,19 +6,25 @@ Best practices for building Model Context Protocol (MCP) servers with FastMCP, l
 
 ## 1. Tool Naming & Metadata
 
-### Use Human-Friendly Display Names
+### Use Kebab-Case Tool Names
 
-MCP tools should have display names that read naturally in the UI. Use the `name`, `title`, `description`, and `tags` parameters in the `@mcp.tool()` decorator:
+MCP tool names must only contain: `A-Z`, `a-z`, `0-9`, underscore (`_`), dash (`-`), and dot (`.`). **Spaces are not allowed** and will cause validation warnings.
+
+Use kebab-case for readable, spec-compliant names:
 
 ```python
-# Good - comprehensive metadata for discoverability
+# Good - kebab-case, spec-compliant
 @mcp.tool(
-    name="Begin Requirements Interview",
-    title="Start a New Requirements Session",
-    description="Initiates a collaborative interview to discover software requirements",
-    tags=["requirements", "interview", "session"]
+    name="begin-requirements-interview",
+    description="Initiates a collaborative interview to discover software requirements"
 )
 def begin_requirements_interview(project_name: Optional[str] = None) -> dict:
+
+# Avoid - spaces cause validation warnings
+@mcp.tool(
+    name="Begin Requirements Interview",  # WARNING: spaces not allowed!
+    description="..."
+)
 
 # Avoid - technical snake_case with no metadata
 @mcp.tool()
@@ -29,10 +35,17 @@ def begin_requirements_interview(project_name: Optional[str] = None) -> dict:
 
 | Parameter | Purpose | Example |
 |-----------|---------|---------|
-| `name` | Display name shown in UI | `"Begin Requirements Interview"` |
-| `title` | Short descriptive title | `"Start a New Requirements Session"` |
-| `description` | Longer explanation of what the tool does | `"Initiates a collaborative interview..."` |
-| `tags` | Categories for filtering/grouping tools | `["requirements", "interview", "session"]` |
+| `name` | Tool identifier (kebab-case) | `"begin-requirements-interview"` |
+| `description` | Explanation of what the tool does | `"Initiates a collaborative interview..."` |
+
+> **Note:** FastMCP only supports `name` and `description`. Parameters like `title` and `tags` are not supported and will cause errors.
+
+### MCP Naming Rules
+
+Per [SEP-986](https://modelcontextprotocol.io/specification/2025-11-25/server/tools#tool-names):
+- Allowed characters: `A-Z`, `a-z`, `0-9`, `_`, `-`, `.`
+- **No spaces allowed**
+- Use kebab-case for readability: `analyze-document-for-requirements`
 
 ### Align Tool Names with User Goals
 
@@ -40,12 +53,12 @@ Name tools after what the user wants to accomplish, not technical operations:
 
 | Avoid | Prefer |
 |-------|--------|
-| `start_session` | `Begin Requirements Interview` |
-| `send_message` | `Discuss Requirements` |
-| `upload_document` | `Analyze Document for Requirements` |
-| `get_data` | `Review Captured Requirements` |
-| `export_markdown` | `Generate Requirements Document` |
-| `end_session` | `Conclude Interview` |
+| `start_session` | `begin-requirements-interview` |
+| `send_message` | `discuss-requirements` |
+| `upload_document` | `analyze-document-for-requirements` |
+| `get_data` | `review-captured-requirements` |
+| `export_markdown` | `generate-requirements-document` |
+| `end_session` | `conclude-interview` |
 
 ---
 
@@ -122,9 +135,9 @@ if use_sse:
     log(f"URL:         http://{host}:{port}/sse")
 log()
 log("Available Tools:")
-log("  - Begin Requirements Interview")
-log("  - Discuss Requirements")
-log("  - Review Captured Requirements")
+log("  - begin-requirements-interview")
+log("  - discuss-requirements")
+log("  - review-captured-requirements")
 log()
 ```
 
@@ -209,7 +222,7 @@ def analyze_document_for_requirements(
     - Email threads or Slack discussions
     
     Args:
-        session_id: The session ID from 'Begin Requirements Interview'.
+        session_id: The session ID from 'begin-requirements-interview'.
         document_name: Name/title of the document (e.g., "kickoff-meeting-notes.md").
         document_content: The full text content of the document.
     
@@ -219,13 +232,13 @@ def analyze_document_for_requirements(
     """
 ```
 
-### Reference Friendly Names in Documentation
+### Reference Tool Names Consistently in Documentation
 
-Use the display names in error messages and documentation:
+Use the exact tool names in error messages and documentation:
 
 ```python
-# Good - matches what user sees
-"No active interview found. Start with 'Begin Requirements Interview' first."
+# Good - matches the actual tool name
+"No active interview found. Start with 'begin-requirements-interview' first."
 
 # Avoid - technical function name
 "No active interview found. Call begin_requirements_interview first."
@@ -247,12 +260,12 @@ A professional requirements analyst that helps discover and document
 software requirements through structured interviews.
 
 Workflow:
-1. Begin with 'Begin Requirements Interview' to start a new session
-2. Use 'Discuss Requirements' to describe your project and answer questions
-3. Use 'Analyze Document for Requirements' to extract from existing docs
-4. Use 'Review Captured Requirements' to verify what's been recorded
-5. Use 'Generate Requirements Document' for the final deliverable
-6. Use 'Conclude Interview' when done
+1. Begin with 'begin-requirements-interview' to start a new session
+2. Use 'discuss-requirements' to describe your project and answer questions
+3. Use 'analyze-document-for-requirements' to extract from existing docs
+4. Use 'review-captured-requirements' to verify what's been recorded
+5. Use 'generate-requirements-document' for the final deliverable
+6. Use 'conclude-interview' when done
 """
 )
 ```
@@ -331,7 +344,7 @@ Include error information in the response dict, don't raise exceptions:
 ```python
 if session_id not in _sessions:
     return {
-        "error": "No active interview found. Start with 'Begin Requirements Interview' first.",
+        "error": "No active interview found. Start with 'begin-requirements-interview' first.",
         "response": None,
         "requirements_discovered": 0
     }
@@ -343,7 +356,7 @@ Tell users how to fix the problem:
 
 ```python
 # Good
-"error": "No active interview found. Start with 'Begin Requirements Interview' first."
+"error": "No active interview found. Start with 'begin-requirements-interview' first."
 
 # Avoid
 "error": "Session not found."
@@ -355,13 +368,13 @@ Tell users how to fix the problem:
 
 Before deploying an MCP server:
 
-- [ ] All tools have human-friendly `name` parameters
+- [ ] All tools have kebab-case `name` parameters (no spaces!)
 - [ ] No emojis or special Unicode characters in output
 - [ ] Startup banner prints to stderr (not stdout) for stdio mode
 - [ ] PYTHONPATH included in Claude Desktop config example
 - [ ] All parent directories have `__init__.py` files
 - [ ] Comprehensive docstrings on all tools
-- [ ] Error messages reference friendly tool names
+- [ ] Error messages reference exact tool names
 - [ ] Server instructions explain the workflow
 - [ ] Both stdio and SSE transports supported
 - [ ] Session IDs returned for stateful interactions
