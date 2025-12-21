@@ -5,14 +5,60 @@ Exposes the requirements elicitation agent as an MCP server using FastMCP.
 This provides a programmatic interface for other tools to interact with the agent.
 """
 
+import sys
 import uuid
+import functools
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Callable, Any
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 from langchain_core.messages import HumanMessage, AIMessage
 
 from .graph import create_graph
+
+# Timeout configuration (in seconds)
+TOOL_TIMEOUT = 120  # 2 minutes max per tool call
+
+def _log(msg: str) -> None:
+    """Log to stderr (safe for stdio transport)."""
+    print(f"[requirements-analyst] {msg}", file=sys.stderr, flush=True)
+
+
+def with_timeout(timeout_seconds: int = TOOL_TIMEOUT):
+    """
+    Decorator to add timeout handling to MCP tool functions.
+    
+    If the wrapped function takes longer than timeout_seconds,
+    returns a graceful error response instead of hanging.
+    """
+    def decorator(func: Callable[..., dict]) -> Callable[..., dict]:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> dict:
+            _log(f"Starting {func.__name__}...")
+            
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(func, *args, **kwargs)
+                try:
+                    result = future.result(timeout=timeout_seconds)
+                    _log(f"Completed {func.__name__}")
+                    return result
+                except FuturesTimeoutError:
+                    _log(f"TIMEOUT: {func.__name__} exceeded {timeout_seconds}s")
+                    # Return a graceful error response
+                    return {
+                        "error": f"Request timed out after {timeout_seconds} seconds. The AI model may be slow. Please try again.",
+                        "suggestion": "If this keeps happening, try shorter messages or break your request into smaller parts.",
+                        "response": None
+                    }
+                except Exception as e:
+                    _log(f"ERROR in {func.__name__}: {type(e).__name__}: {e}")
+                    return {
+                        "error": f"An error occurred: {type(e).__name__}: {str(e)}",
+                        "response": None
+                    }
+        return wrapper
+    return decorator
 
 # Load environment variables
 load_dotenv()
@@ -44,7 +90,7 @@ details to the development team.
 _sessions: dict[str, tuple] = {}  # thread_id -> (graph, config)
 
 
-def _get_or_create_session(session_id: Optional[str] = None) -> tuple[str, any, dict]:
+def _get_or_create_session(session_id: Optional[str] = None) -> tuple[str, Any, dict]:
     """Get existing session or create a new one."""
     if session_id and session_id in _sessions:
         graph, config = _sessions[session_id]
@@ -77,27 +123,31 @@ def begin_requirements_interview(project_name: Optional[str] = None) -> dict:
         - session_id: Keep this to continue the conversation
         - greeting: Introduction and opening questions
     """
-    session_id, graph, config = _get_or_create_session()
+    @with_timeout(TOOL_TIMEOUT)
+    def _execute():
+        session_id, graph, config = _get_or_create_session()
+        
+        # Initialize the session to get the greeting
+        init_message = "__init__"
+        if project_name:
+            init_message = f"__init__ for project: {project_name}"
+        
+        state = {"messages": [HumanMessage(content=init_message)]}
+        
+        response_text = ""
+        for event in graph.stream(state, config, stream_mode="values"):
+            if "messages" in event and event["messages"]:
+                last_msg = event["messages"][-1]
+                if isinstance(last_msg, AIMessage):
+                    response_text = last_msg.content
+        
+        return {
+            "session_id": session_id,
+            "greeting": response_text,
+            "next_step": "Use 'discuss-requirements' to describe your project and continue the conversation"
+        }
     
-    # Initialize the session to get the greeting
-    init_message = "__init__"
-    if project_name:
-        init_message = f"__init__ for project: {project_name}"
-    
-    state = {"messages": [HumanMessage(content=init_message)]}
-    
-    response_text = ""
-    for event in graph.stream(state, config, stream_mode="values"):
-        if "messages" in event and event["messages"]:
-            last_msg = event["messages"][-1]
-            if isinstance(last_msg, AIMessage):
-                response_text = last_msg.content
-    
-    return {
-        "session_id": session_id,
-        "greeting": response_text,
-        "next_step": "Use 'discuss-requirements' to describe your project and continue the conversation"
-    }
+    return _execute()
 
 
 @mcp.tool(
@@ -129,24 +179,28 @@ def elicit_requirements(session_id: str, message: str) -> dict:
             "requirements_discovered": 0
         }
     
-    graph, config = _sessions[session_id]
-    state = {"messages": [HumanMessage(content=message)]}
+    @with_timeout(TOOL_TIMEOUT)
+    def _execute():
+        graph, config = _sessions[session_id]
+        state = {"messages": [HumanMessage(content=message)]}
+        
+        response_text = ""
+        for event in graph.stream(state, config, stream_mode="values"):
+            if "messages" in event and event["messages"]:
+                last_msg = event["messages"][-1]
+                if isinstance(last_msg, AIMessage):
+                    response_text = last_msg.content
+        
+        # Get current requirements count
+        current_state = graph.get_state(config)
+        req_count = len(current_state.values.get("requirements", []))
+        
+        return {
+            "response": response_text,
+            "requirements_discovered": req_count
+        }
     
-    response_text = ""
-    for event in graph.stream(state, config, stream_mode="values"):
-        if "messages" in event and event["messages"]:
-            last_msg = event["messages"][-1]
-            if isinstance(last_msg, AIMessage):
-                response_text = last_msg.content
-    
-    # Get current requirements count
-    current_state = graph.get_state(config)
-    req_count = len(current_state.values.get("requirements", []))
-    
-    return {
-        "response": response_text,
-        "requirements_discovered": req_count
-    }
+    return _execute()
 
 
 @mcp.tool(
@@ -180,34 +234,38 @@ def analyze_document_for_requirements(session_id: str, document_name: str, docum
             "requirements_discovered": 0
         }
     
-    graph, config = _sessions[session_id]
+    @with_timeout(TOOL_TIMEOUT)
+    def _execute():
+        import tempfile
+        
+        graph, config = _sessions[session_id]
+        
+        # Create a temporary file for the agent to process
+        temp_dir = Path(tempfile.gettempdir())
+        temp_path = temp_dir / document_name
+        with open(temp_path, "w", encoding="utf-8") as f:
+            f.write(document_content)
+        
+        file_message = f"I uploaded a file: {temp_path}"
+        state = {"messages": [HumanMessage(content=file_message)]}
+        
+        response_text = ""
+        for event in graph.stream(state, config, stream_mode="values"):
+            if "messages" in event and event["messages"]:
+                last_msg = event["messages"][-1]
+                if isinstance(last_msg, AIMessage):
+                    response_text = last_msg.content
+        
+        # Get current requirements count
+        current_state = graph.get_state(config)
+        req_count = len(current_state.values.get("requirements", []))
+        
+        return {
+            "analysis": response_text,
+            "requirements_discovered": req_count
+        }
     
-    # Create a temporary file for the agent to process
-    import tempfile
-    
-    temp_dir = Path(tempfile.gettempdir())
-    temp_path = temp_dir / document_name
-    with open(temp_path, "w", encoding="utf-8") as f:
-        f.write(document_content)
-    
-    file_message = f"I uploaded a file: {temp_path}"
-    state = {"messages": [HumanMessage(content=file_message)]}
-    
-    response_text = ""
-    for event in graph.stream(state, config, stream_mode="values"):
-        if "messages" in event and event["messages"]:
-            last_msg = event["messages"][-1]
-            if isinstance(last_msg, AIMessage):
-                response_text = last_msg.content
-    
-    # Get current requirements count
-    current_state = graph.get_state(config)
-    req_count = len(current_state.values.get("requirements", []))
-    
-    return {
-        "analysis": response_text,
-        "requirements_discovered": req_count
-    }
+    return _execute()
 
 
 @mcp.tool(
@@ -292,26 +350,30 @@ def generate_requirements_document(session_id: str, format: str = "markdown") ->
             "requirements_count": 0
         }
     
-    graph, config = _sessions[session_id]
+    @with_timeout(TOOL_TIMEOUT)
+    def _execute():
+        graph, config = _sessions[session_id]
+        
+        # Generate the output
+        state = {"messages": [HumanMessage(content="show requirements")]}
+        
+        response_text = ""
+        for event in graph.stream(state, config, stream_mode="values"):
+            if "messages" in event and event["messages"]:
+                last_msg = event["messages"][-1]
+                if isinstance(last_msg, AIMessage):
+                    response_text = last_msg.content
+        
+        current_state = graph.get_state(config)
+        req_count = len(current_state.values.get("requirements", []))
+        
+        return {
+            "document": response_text,
+            "requirements_count": req_count,
+            "format": format
+        }
     
-    # Generate the output
-    state = {"messages": [HumanMessage(content="show requirements")]}
-    
-    response_text = ""
-    for event in graph.stream(state, config, stream_mode="values"):
-        if "messages" in event and event["messages"]:
-            last_msg = event["messages"][-1]
-            if isinstance(last_msg, AIMessage):
-                response_text = last_msg.content
-    
-    current_state = graph.get_state(config)
-    req_count = len(current_state.values.get("requirements", []))
-    
-    return {
-        "document": response_text,
-        "requirements_count": req_count,
-        "format": format
-    }
+    return _execute()
 
 
 @mcp.tool(
@@ -351,12 +413,9 @@ def conclude_interview(session_id: str) -> dict:
 
 # Run the server when executed directly
 if __name__ == "__main__":
-    import sys
     
     # Check for --sse flag to run with HTTP transport
     use_sse = "--sse" in sys.argv
-    host = "127.0.0.1"
-    port = 8765
     
     # For stdio transport, stdout is reserved for JSON-RPC - use stderr for info
     # For SSE transport, we can use stdout
@@ -370,9 +429,10 @@ if __name__ == "__main__":
     log("=" * 60)
     log()
     log("Server Name: requirements-analyst")
+    log(f"Timeout:     {TOOL_TIMEOUT} seconds per tool call")
     if use_sse:
         log(f"Transport:   SSE (Server-Sent Events)")
-        log(f"URL:         http://{host}:{port}/sse")
+        log(f"URL:         http://localhost:8000/sse (default)")
     else:
         log("Transport:   stdio (standard input/output)")
     log()
@@ -413,6 +473,6 @@ if __name__ == "__main__":
     output.flush()
     
     if use_sse:
-        mcp.run(transport="sse", host=host, port=port)
+        mcp.run(transport="sse")
     else:
         mcp.run()
