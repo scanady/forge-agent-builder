@@ -18,6 +18,7 @@
 
 Rather than starting from scratch, Forge Agent Builder gives you a proven methodology to:
 - **Specify** agent behavior, tone, and capabilities
+- **Define Persona** for agent communication style and personality
 - **Clarify** agent requirements and success criteria
 - **Plan** architecture and implementation details
 - **Tasks** for the implementation
@@ -35,7 +36,7 @@ Forge Agent Builder is not a single agent—it's a **meta-framework** consisting
 
 ## Core Components
 
-### `.github/agents/` - Agent Definitions
+#### Agent Definitions - `.github/agents/`
 
 Agent configuration and definition files:
 
@@ -45,7 +46,7 @@ Agent configuration and definition files:
 - **`forge.agent.tasks.agent.md`**: Tasks agent definition
 - **`forge.agent.implement.agent.md`**: Implement agent definition
 
-### `.github/prompts/` - Agent Prompts
+#### Agent Prompts - `.github/prompts/`
 
 Prompts that trigger each agent:
 
@@ -55,8 +56,7 @@ Prompts that trigger each agent:
 - **`forge.agent.tasks.prompt.md`**: Task breakdown and milestone planning
 - **`forge.agent.implement.prompt.md`**: Code generation and implementation strategy
 
-
-### `.agent-builder/templates/` - Agent Templates
+#### Agent Templates - `.agent-builder/templates/`
 
 Starting templates for building new agents:
 
@@ -68,32 +68,29 @@ Starting templates for building new agents:
 
 ### Create a New Agent
 
-1. **Start with a template**:
-   ```bash
-   cp .agent-builder/templates/basic-agent.template.md agent-specs/my-agent/spec.md
-   ```
-
-3. **Use Nexus Specify Agent** to detail behavior:
+1. **Use Nexus Specify Agent** to detail behavior:
    - Define agent persona and communication style
    - List capabilities and tools
    - Specify success metrics
 
-3. **Use Nexus Clarify Agent** to refine requirements:
+2. **Use Nexus Clarify Agent** to refine requirements:
    - Ask clarifying questions about agent purpose, scope, and constraints
    - Document acceptance criteria and edge cases
 
-4. **Use Nexus Plan Agent** to design architecture:
+3. **Use Nexus Plan Agent** to design architecture:
    - Plan state management and data flow
    - Define nodes/graph structure
    - Design tool schemas
 
-5. **Use Nexus Tasks Agent** to break down implementation:
+4. **Use Nexus Tasks Agent** to break down implementation:
    - Create a task list and milestones
    - Assign priorities and dependencies
 
-6. **Use Nexus Implement Agent** to generate code:
-   - Generate Python agent implementation
+5. **Use Nexus Implement Agent** to generate code:
+   - Generate agent implementation
    - Create unit and integration tests
+   
+6. **Use Nexus Document Agent** to generate documentation:
    - Produce documentation
 
 ## Agent Development Workflow
@@ -105,19 +102,23 @@ The typical Agent Builder workflow:
    └─> What is the agent's personality?
        What capabilities does it need?
 
-2. CLARIFY
+2. PERSONA
+   └─> How should the agent communicate?
+       What is its tone and values?
+            
+3. CLARIFY
    └─> What problem does this agent solve?
        What are the constraints?
             
-3. PLAN
+4. PLAN
    └─> What is the architecture?
        How should data flow?
 
-4. TASKS
+5. TASKS
    └─> What are the implementation steps?
        What are the milestones?
 
-5. IMPLEMENT
+6. IMPLEMENT
    └─> Generate the code
        Write tests
        

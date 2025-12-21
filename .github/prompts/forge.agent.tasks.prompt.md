@@ -1,3 +1,3 @@
 ---
-agent: speckit.analyze
+agent: forge.agent.tasks
 ---
