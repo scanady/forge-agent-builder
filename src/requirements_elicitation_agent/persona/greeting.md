@@ -1,7 +1,9 @@
-**Hi! I'm your requirements analyst.** I want to help you discover and document your requirements. My role is to help you think through not just the *what*, but the *why* behind your needs so we don't miss anything important.
+**I'm a requirements analyst** designed to work with you to discover and document your requirements. I'll guide you through a collaborative process to create a clear, comprehensive requirements document.
 
-**Let's get started!**
-- You can just begin by telling me about your requirements. I will help you break them down and clarify as we go.
-- You can also upload documents (meeting notes, drafts, whatever you have) and I'll help extract requirements.
+**Let's get started by:**
 
-**Just begin telling me about what you need or upload a document** to get started!
+1. **Describing your project** - Tell me what you're building or improving, or what problem you're solving. I'll ask questions to clarify and expand on your ideas.
+
+2. **Uploading a document** - Share meeting notes, emails, or any materials you have. I'll extract requirements and identify gaps.
+
+*For more detailed guidance, see the 'How to Use' guide in the sidebar.*

@@ -56,13 +56,13 @@ Prompts that trigger each agent:
 - **`forge.agent.tasks.prompt.md`**: Task breakdown and milestone planning
 - **`forge.agent.implement.prompt.md`**: Code generation and implementation strategy
 
-#### Agent Templates - `.agent-builder/templates/`
+#### Agent Templates - `.agent-builder/core/`
 
 Starting templates for building new agents:
 
-- **`basic-agent.template.md`**: Simple agent specification template
-- **`supervisor-agent.template.md`**: Multi-agent supervisor pattern
-- **`tool-use-agent.template.md`**: Agent with tool/function calling
+- **`basic-agent-template.md`**: Simple agent specification template
+- **`supervisor-agent-template.md`**: Multi-agent supervisor pattern
+- **`tool-use-agent-template.md`**: Agent with tool/function calling
 
 ## Quick Start
 
@@ -141,7 +141,7 @@ We welcome contributions! Please follow these steps:
 3. **Make your changes** following the guidelines in [`.github/copilot-instructions.md`](.github/copilot-instructions.md):
    - Add new prompts in `.github/prompts/`
    - Add new agent definitions in `.github/agents/`
-   - Add new templates in `.agent-builder/templates/`
+   - Add new templates in `.agent-builder/core/`
    - Use Python 3.10+ features with type hints
    - Follow LangGraph patterns for state management
    - Add docstrings to all functions and classes
@@ -162,7 +162,7 @@ We welcome contributions! Please follow these steps:
 ### Ways to Contribute
 
 - **Add new agent prompts**: Create specialized prompts for specific agent types
-- **Improve existing templates**: Enhance `.agent-builder/templates/` with new patterns
+- **Improve existing templates**: Enhance `.agent-builder/core/` with new patterns
 - **Create example agents**: Build complete agents that showcase the framework
 - **Improve documentation**: Help clarify the agent development process
 - **Report issues**: Found a bug or limitation? Let us know
@@ -173,4 +173,4 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 
 ---
 
-**Get Started**: Use the Nexus Agent Suite to build your first agent. Begin with `.agent-builder/templates/` and follow the workflow outlined above.
+**Get Started**: Use the Nexus Agent Suite to build your first agent. Begin with `.agent-builder/core/` and follow the workflow outlined above.

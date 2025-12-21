@@ -24,7 +24,7 @@ You are an expert requirements engineer specializing in AI agent specification. 
 
 Before drafting any specification, load and apply:
 - **Design Principles:** `.agent-builder/agent-design-principles.md` — All specs must align with these principles
-- **Spec Template:** `.agent-builder/templates/basic-agent.template.md` — Use this structure for output
+- **Spec Template:** `.agent-builder/core/basic-agent-template.md` — Use this structure for output
 
 ---
 

@@ -160,11 +160,11 @@ log()
 
 ### Include Configuration Examples
 
-For Claude Desktop integration, show the exact JSON config needed:
+For MCP client integration, show the exact configuration needed. For example, Claude Desktop uses this JSON format:
 
 ```python
 project_root = Path(__file__).parent.parent.parent.absolute()
-log("To use with Claude Desktop, add to your config:")
+log("Example config for Claude Desktop:")
 log('{')
 log('  "mcpServers": {')
 log('    "server-name": {')
@@ -185,22 +185,28 @@ log('}')
 
 ### Set PYTHONPATH for Package Imports
 
-When running as a module with `-m`, Python needs to find your packages. Include `PYTHONPATH` in the Claude Desktop config:
+When running as a module with `-m`, Python needs to find your packages. Include `PYTHONPATH` in your MCP client configuration. Example for Claude Desktop:
 
 ```json
 {
   "mcpServers": {
     "my-server": {
-      "command": "/path/to/.venv/Scripts/python.exe",
+      "command": "C:/Users/username/project/.venv/Scripts/python.exe",
       "args": ["-m", "src.my_agent.mcp_server"],
-      "cwd": "/path/to/project",
+      "cwd": "C:/Users/username/project",
       "env": {
-        "PYTHONPATH": "/path/to/project"
+        "PYTHONPATH": "C:/Users/username/project"
       }
     }
   }
 }
 ```
+
+**Windows Path Escaping:**
+- Use forward slashes (`/`) instead of backslashes - simpler and works in JSON
+- OR use double backslashes (`\\`) if you prefer: `"C:\\Users\\username\\project"`
+- JSON configuration files require escaping backslashes
+- **Note:** This example shows Windows paths. For macOS/Linux, use paths like `/Users/username/project` or `/home/username/project`
 
 ### Create `__init__.py` Files
 
@@ -220,7 +226,7 @@ src/
 
 ### Write Comprehensive Docstrings
 
-Tool descriptions appear in Claude's UI. Make them helpful:
+Tool descriptions appear in the MCP client UI. Make them helpful:
 
 ```python
 @mcp.tool(name="Analyze Document for Requirements")
@@ -293,7 +299,7 @@ Workflow:
 
 ### Support Multiple Transports
 
-Offer both stdio (for Claude Desktop) and SSE (for HTTP clients):
+Offer both stdio (for desktop clients) and SSE (for HTTP clients):
 
 ```python
 if __name__ == "__main__":
@@ -309,7 +315,7 @@ if __name__ == "__main__":
 
 Usage:
 ```bash
-# stdio mode (default) - for Claude Desktop
+# stdio mode (default) - for desktop clients like Claude Desktop
 python -m src.my_agent.mcp_server
 
 # SSE mode - for HTTP clients
@@ -388,7 +394,7 @@ Before deploying an MCP server:
 - [ ] All tools have kebab-case `name` parameters (no spaces!)
 - [ ] No emojis or special Unicode characters in output
 - [ ] Startup banner prints to stderr (not stdout) for stdio mode
-- [ ] PYTHONPATH included in Claude Desktop config example
+- [ ] PYTHONPATH included in MCP client config example
 - [ ] All parent directories have `__init__.py` files
 - [ ] Comprehensive docstrings on all tools
 - [ ] Error messages reference exact tool names

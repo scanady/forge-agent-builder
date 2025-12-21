@@ -60,9 +60,6 @@ if not st.session_state.initialized and len(st.session_state.messages) == 0:
 st.title("📋 Riley - Requirements Analyst")
 st.markdown("""
 *Your expert partner in discovering and documenting software requirements*
-
-I help you bridge the gap between business concepts and executable software requirements
-through collaborative interviews and structured analysis.
 """)
 
 # Custom CSS for sidebar panels
@@ -126,9 +123,9 @@ with st.sidebar:
     <div class="panel-header">💡 How to Use</div>
     <div style="font-size: 0.9em; color: #4b5563;">
     <b>Getting Started:</b><br>
-    1. Tell me about your project<br>
-    2. Upload a document to extract requirements<br>
-    3. Ask me to "show requirements" to review or export the requirements.<br><br>
+    1. <b>Describe</b> your project<br>
+    2. <b>Upload</b> a document<br>
+    3. Ask me to <b>"show requirements"</b> to review the requirements.<br><br>
     <b>Tips:</b><br>Be specific • Ask for clarifications • Upload information anytime
     </div>
 </div>
