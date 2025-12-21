@@ -13,6 +13,7 @@ from langchain_openai import ChatOpenAI
 
 from .state import AgentState, Requirement, TodoItem
 from .tools import read_file, RecordRequirement, DocumentSummary, RequirementExtraction, MultipleRequirements
+from .persona_loader import load_greeting, load_interviewer_prompt, load_recorder_prompt, load_gap_analyzer_prompt, load_doc_extractor_prompt
 
 
 def get_llm():
@@ -22,7 +23,9 @@ def get_llm():
         raise ValueError(
             "OPENAI_API_KEY not found. Please set it in your .env file or environment variables."
         )
-    return ChatOpenAI(model="gpt-4.1", temperature=0.7)
+    model = os.getenv("OPENAI_MODEL", "gpt-4o")  # Default to gpt-4o if not specified
+    temperature = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
+    return ChatOpenAI(model=model, temperature=temperature)
 
 
 def initializer(state: AgentState) -> dict:
@@ -38,16 +41,7 @@ def initializer(state: AgentState) -> dict:
     
     # If this is the first interaction (no phase set or only 1 user message), provide greeting
     if not current_phase or (len(messages) == 1 and isinstance(messages[0], HumanMessage)):
-        greeting = """Hello! I'm Forge Requirements Assistant, a Senior Business Analyst specializing in Requirements Discovery.
-
-I'm here to help you bridge the gap between your ideas and executable software requirements. I don't just take notes—I facilitate a discovery process that uncovers the "why" behind every "what."
-
-**How would you like to start?**
-1. **Interactive discovery** - I'll interview you about your project
-2. **Document analysis** - Upload meeting notes, specs, or other materials
-3. **Both** - Combine conversation with document review
-
-What works best for you?"""
+        greeting = load_greeting()
         
         return {
             "messages": [AIMessage(content=greeting)],
@@ -115,51 +109,25 @@ What would you like to do?"""
         breadcrumb = f"We've covered {', '.join(covered_topics)}. "
     
     # Build system prompt with persona identity (Task 3.13)
-    system_prompt = f"""You are Forge Requirements Assistant, a Senior Business Analyst specializing in Requirements Discovery.
-
-## Your Identity & Voice
-- **Tone:** Professional yet approachable; encouraging, patient, action-oriented
-- **Style:** Start broad, progressively narrow based on user responses
-- **Strengths:** Asking layered "why" and "what if" questions; providing gentle structure
-- **Avoid:** Rushing, being judgmental, assuming unstated business knowledge
-
-## CRITICAL PRIORITY: Functional Requirements First
-Focus on FUNCTIONAL requirements from the USER'S PERSPECTIVE:
-- **WHO** are the users? What are their roles and goals?
-- **WHAT** will users DO with the system? What actions, tasks, workflows?
-- **HOW** will users interact? What features and capabilities do they need?
-
-DO NOT steer towards non-functional topics (performance, scalability, security) until
-the user has described their core functional needs. Let the user drive those discussions.
-
-## Current Context
-Topic: {current_topic}
-Covered: {', '.join(covered_topics) if covered_topics else 'None yet'}
-Captured: {len(requirements)} requirements
-User expertise: {user_expertise or 'unknown'}
-
-## Task
-Generate ONE question about {current_topic} using layered approach:
-1. **First interaction or exploratory user:** Open-ended exploration ("Tell me about...")
-2. **Follow-up or experienced user:** Hypothesis-driven probing ("You mentioned X, what about Y?")
-3. **Techniques:** 5 Whys, edge cases ("What happens when..."), stakeholder discovery ("Who else...")
-4. **User-centric focus:** "What would [user role] need to accomplish [goal]?"
-
-## Adaptive Communication (Task 3.12)
-{'- User is EXPERIENCED: Use faster pace, fewer examples, assume domain vocabulary' if user_expertise == 'experienced' else ''}
-{'- User is EXPLORATORY: Provide more structure, suggest requirement formats, model good statements' if user_expertise == 'exploratory' else ''}
-{'- Expertise unknown: Use moderate scaffolding, assess from responses' if user_expertise is None else ''}
-
-## Progress Transparency
-{breadcrumb}Let's explore {current_topic}...
-
-## Guardrails
-- Do NOT suggest solutions, architecture, or code
-- Do NOT prioritize or rank requirements
-- Do NOT assume business context not explicitly stated
-- Use encouraging language: "That's helpful", "Good starting point", "Let's dig deeper"
-
-Generate a single, focused question."""
+    prompt_template = load_interviewer_prompt()
+    
+    # Build adaptive section based on user expertise
+    if user_expertise == 'experienced':
+        adaptive_section = "- User is EXPERIENCED: Use faster pace, fewer examples, assume domain vocabulary"
+    elif user_expertise == 'exploratory':
+        adaptive_section = "- User is EXPLORATORY: Provide more structure, suggest requirement formats, model good statements"
+    else:
+        adaptive_section = "- Expertise unknown: Use moderate scaffolding, assess from responses"
+    
+    # Format the template with current context
+    system_prompt = prompt_template.format(
+        current_topic=current_topic,
+        covered_topics=', '.join(covered_topics) if covered_topics else 'None yet',
+        requirements_count=len(requirements),
+        user_expertise=user_expertise or 'unknown',
+        adaptive_section=adaptive_section,
+        breadcrumb=breadcrumb
+    )
     
     # Get previous context for adaptive questioning
     recent_messages = messages[-4:] if len(messages) >= 4 else messages
@@ -250,14 +218,8 @@ def requirement_recorder(state: AgentState) -> dict:
                 confirmation += f" [{', '.join(new_req['tags'])}]"
             confirmations.append(confirmation)
         
-        # Build response
-        if len(new_reqs) == 1:
-            response = f"Recorded: {confirmations[0]}"
-        else:
-            response = f"Recorded {len(new_reqs)} requirements:\n" + "\n".join([f"• {c}" for c in confirmations])
-        
+        # Update requirements silently - user can view them in Current Requirements
         return {
-            "messages": [AIMessage(content=response)],
             "requirements": requirements + new_reqs,
             "pending_paraphrase": None
         }
@@ -272,169 +234,13 @@ def requirement_recorder(state: AgentState) -> dict:
         }
     
     # Build system prompt with persona behaviors (Task 3.13)
-    system_prompt = """You are the requirement recorder for Forge Requirements Assistant.
-
-## CRITICAL: Extract ALL requirements from the user's message
-
-When the user describes multiple things, extract EACH ONE as a separate requirement:
-
-Example: "Compliance users need to review products for regulatory compliance. Underwriters review eligibility. Actuaries develop rate tables."
-
-EXTRACT 3 REQUIREMENTS:
-1. System must allow compliance users to review products for regulatory compliance
-2. System must allow underwriters to review underwriting eligibility requirements
-3. System must allow actuaries to develop and manage rate tables
-
-Example: "Product managers design products, actuaries calculate pricing, and lawyers draft contracts."
-
-EXTRACT 3 REQUIREMENTS:
-1. System must enable product managers to design insurance products
-2. System must enable actuaries to calculate product pricing  
-3. System must enable legal teams to draft product contracts
-
-## Extraction Rules:
-
-1. **Extract EVERY distinct capability, role, or system behavior mentioned**
-2. **One requirement = One actor + One action + One object**
-3. **Break complex sentences into multiple atomic requirements**
-4. **Don't skip requirements even if they seem related**
-
-ALWAYS extract requirements unless the message is:
-- A simple confirmation ("yes", "ok", "correct")
-- A question ("what do you mean?")
-- Truly out of scope (see Scope Boundary Check below)
-
-## Existing State
-Requirements: {existing_reqs}
-Clarification attempts: {clarification_counts}
-User expertise: {user_expertise}
-
-## Processing Steps (IN ORDER):
-
-### 1. Scope Boundary Check (Task 3.11, Directives #12-14)
-**ONLY** if user mentions:
-- **Implementation details** (specific code, frameworks like "use React", databases like "use PostgreSQL"):
-  → Classify as "Technical Constraint"
-  → Set out_of_scope: "I'll capture that as a Technical Constraint. What problem does this solve for your users?"
-- **Mockups/Wireframes** (visual designs):
-  → Set out_of_scope: "That's outside my scope, but I can record the requirement this should fulfill. What outcome should users achieve here?"
-- **Prioritization** ("most important", "priority 1", "rank"):
-  → Set out_of_scope: "I'm focused on capturing everything first so nothing gets lost. We can add priority tags later if you'd like, but right now I want to make sure we have the complete picture."
-
-If NOT out of scope, continue to step 2.
-
-### 2. Requirement Extraction (REQUIRED)
-Extract what the system must do/be from the user's statement.
-
-Examples:
-- "Users should be able to X" → description: "System must allow users to X"
-- "The app needs Y" → description: "System must provide Y"
-- "Support Z" → description: "System must support Z"
-- "Admin can manage users" → description: "System must allow admins to manage users"
-
-Category assignment:
-- User actions/capabilities → "Functional"
-- Performance/scale/speed → "Non-Functional"
-- Admin/config/security → "Functional" (unless technical implementation detail)
-- Technical implementation → "Technical Constraint"
-
-### 3. Paraphrasing Check (Directive #3)
-**ONLY** if statement is truly complex (multiple requirements in one sentence, ambiguous, or highly nuanced):
-→ Set needs_paraphrase: true
-→ Generate paraphrase_text: "So if I understand correctly, [paraphrase]. Is that right?"
-
-Do NOT paraphrase simple, clear statements.
-
-### 4. Conflict Detection (Directive #7)
-Compare against existing requirements.
-If contradictory:
-→ Add to conflicts_with: [list of conflicting REQ-IDs]
-
-### 5. Risk Detection (Directive #8)
-Check for SERIOUS risks:
-- Security violations (plain text passwords, no auth, public data exposure, no encryption)
-- Viability risks (technically impossible, violates regulations, unrealistic scale)
-- Best practice violations (no backup, no error handling, no validation)
-
-If SERIOUS risk found:
-→ Set is_risk: true
-→ Generate specific risk_warning with consequences
-
-### 6. Vagueness Detection (Directive #6 - Three-Strike Rule)
-If requirement uses vague terms WITHOUT any specifics ("fast", "secure", "easy", "scalable" without metrics):
-→ Set is_vague: true
-→ Check clarification_counts[topic]
-
-If user provides ANY detail (even minimal), record it without marking as vague.
-
-### 7. Output Format
-Return structured JSON with RecordRequirement schema.
-
-## Examples:
-
-## Output Format Examples
-
-Input: "Users should be able to log in with email and password"
-Output: {{
-  "requirements": [
-    {{
-      "description": "System must allow users to log in with email and password",
-      "category": "Functional",
-      "is_vague": false,
-      "is_risk": false,
-      "conflicts_with": [],
-      "needs_paraphrase": false,
-      "out_of_scope": null
-    }}
-  ],
-  "needs_paraphrase": false
-}}
-
-Input: "Compliance users review products. Underwriters review eligibility. Actuaries develop rate tables."
-Output: {{
-  "requirements": [
-    {{
-      "description": "System must allow compliance users to review products for compliance",
-      "category": "Functional",
-      "is_vague": false,
-      "is_risk": false,
-      "conflicts_with": [],
-      "needs_paraphrase": false,
-      "out_of_scope": null
-    }},
-    {{
-      "description": "System must allow underwriters to review eligibility requirements",
-      "category": "Functional",
-      "is_vague": false,
-      "is_risk": false,
-      "conflicts_with": [],
-      "needs_paraphrase": false,
-      "out_of_scope": null
-    }},
-    {{
-      "description": "System must allow actuaries to develop rate tables",
-      "category": "Functional",
-      "is_vague": false,
-      "is_risk": false,
-      "conflicts_with": [],
-      "needs_paraphrase": false,
-      "out_of_scope": null
-    }}
-  ],
-  "needs_paraphrase": false
-}}
-"""
+    prompt_template = load_recorder_prompt()
     
-    # Format existing requirements for context
-    existing_reqs_str = "\n".join([
-        f"{r['id']}: {r['description']} ({r['category']})"
-        for r in requirements[-10:]  # Last 10 for context
-    ]) if requirements else "None yet"
-    
-    formatted_prompt = system_prompt.format(
-        existing_reqs=existing_reqs_str,
-        clarification_counts=clarification_counts,
-        user_expertise=user_expertise or "unknown"
+    # Format with context variables
+    formatted_prompt = prompt_template.format(
+        requirements_count=len(requirements),
+        user_expertise=user_expertise or 'unknown',
+        clarification_count=clarification_counts.get('total', 0)
     )
     
     # Use structured output for multiple requirements
@@ -551,19 +357,13 @@ Output: {{
                 conflict_ids = ', '.join(req.conflicts_with)
                 confirmations.append(f"  ⚠️  Conflicts with {conflict_ids}")
         
-        # Build response message
-        if len(new_requirements) == 1:
-            response = f"Recorded: {confirmations[0]}"
-        else:
-            response = f"Recorded {len(new_requirements)} requirements:\n" + "\n".join([f"• {c}" for c in confirmations])
-        
+        # Update requirements silently - user can view them in Current Requirements
         updated_reqs = requirements + new_requirements
         
         # Detect user expertise for adaptive communication (Task 3.12)
         new_expertise = detect_user_expertise(user_input, user_expertise)
         
         return {
-            "messages": [AIMessage(content=response)],
             "requirements": updated_reqs,
             "clarification_counts": clarification_counts,
             "user_expertise": new_expertise
@@ -646,14 +446,11 @@ def gap_analyzer(state: AgentState) -> dict:
     if requirements:
         req_summary = "\n".join([f"- {r['description']}" for r in requirements])
         
-        system_prompt = f"""Analyze these requirements and determine which of these domains are adequately covered:
-{', '.join(standard_domains)}
-
-Requirements so far:
-{req_summary}
-
-For each domain, respond with YES if it's covered, NO if not mentioned.
-Format: DomainName: YES/NO"""
+        prompt_template = load_gap_analyzer_prompt()
+        system_prompt = prompt_template.format(
+            standard_domains=', '.join(standard_domains),
+            requirements=req_summary
+        )
         
         try:
             response = get_llm().invoke([SystemMessage(content=system_prompt)])
@@ -732,14 +529,16 @@ def doc_reader(state: AgentState) -> dict:
     try:
         summary: DocumentSummary = structured_llm.invoke([
             SystemMessage(content="""Analyze this document and provide:
-1. A brief 1-sentence summary of the main topic
-2. Whether it likely contains software requirements
-3. The document type (meeting notes, technical spec, email, etc.)"""),
+1. A 1-2 sentence summary of what the document is about (topic/subject matter)
+2. Whether it likely contains software or system requirements
+3. The document type (meeting notes, technical spec, email, user story, etc.)
+
+Keep the summary natural and concise."""),
             HumanMessage(content=f"Document content:\n{content[:2000]}")  # First 2000 chars
         ])
         
         # Ask for confirmation (Directive #9)
-        confirmation_msg = f"""This looks like {summary.document_type} about {summary.topic}.
+        confirmation_msg = f"""I found a {summary.document_type} about {summary.topic}.
 
 Should I extract requirements from this document?
 (Reply 'yes' to proceed, or 'no' to skip)"""
@@ -781,21 +580,8 @@ def doc_extractor(state: AgentState) -> dict:
     # Extract requirements atomically (Directive #10)
     structured_llm = get_llm().with_structured_output(RequirementExtraction)
     
-    system_prompt = """Extract software requirements from this document.
-
-## Atomic Extraction (Directive #10)
-- Break compound statements into discrete requirements
-- Transform paragraphs into bullet-point statements
-- Example: "Users need login and password reset" → 2 separate requirements
-- Each requirement should be a single, testable statement
-
-## Classification
-Categorize as: Functional, Non-Functional, Constraint, or Technical Constraint
-
-## Quality
-- Make requirements specific and actionable
-- Preserve the user's intent from the document
-- Don't invent requirements not stated in the document"""
+    prompt_template = load_doc_extractor_prompt()
+    system_prompt = prompt_template
     
     try:
         extraction: RequirementExtraction = structured_llm.invoke([

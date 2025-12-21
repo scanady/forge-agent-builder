@@ -1,3 +1,0 @@
-the main role is the life insurance product manager. The product manager designs and manages the life insurance product portfolio. Life Insurance Product Manager - the person responsible for the requirements, design, development and management of life insurance products
-
-Compliance users need to review the products to make sure they are compliant with regulatory and state requirements. Underwriters need to review the underwriting requirements and eligibility. Actuaries develop rate tables and other details. Marketers use as the source for product information they bring to market. Systems use the application via APIs to provide quotes, product information, etc.
