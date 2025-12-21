@@ -40,6 +40,8 @@ if "graph" not in st.session_state:
     st.session_state.graph = create_graph()
 if "initialized" not in st.session_state:
     st.session_state.initialized = False
+if "uploader_key" not in st.session_state:
+    st.session_state.uploader_key = str(uuid.uuid4())
 
 # Show initial greeting automatically when the app first loads
 if not st.session_state.initialized and len(st.session_state.messages) == 0:
@@ -98,6 +100,8 @@ with st.sidebar:
         st.session_state.messages = []
         st.session_state.processed_files = set()
         st.session_state.initialized = False
+        # Reset file uploader by changing its key
+        st.session_state.uploader_key = str(uuid.uuid4())
         st.rerun()
     
     st.markdown("")  # Spacer
@@ -138,7 +142,8 @@ with st.sidebar:
             "Upload Document",
             type=["txt", "md", "pdf", "docx"],
             help="Upload meeting notes, specs, or other requirement documents",
-            label_visibility="collapsed"
+            label_visibility="collapsed",
+            key=st.session_state.uploader_key
     )
 
 # Handle file upload (Task 5.4)

@@ -11,45 +11,47 @@ I am the primary user. I am the product manager. other groups like compliance, m
 I need to configure a new insurance product by creating the product 'shell'. The 'shell' includes all the basic information about the product, including name, description, target market, demographics, type of product, age limits, coverage limits, etc.
 
 # 4
-Here is some information from the Chief Actuary:
-"I need precision, version control, and I need you to stop mangling my formulas."
+Here is some information from the Chief Actuary about how the system should support his role.
 
-I don’t care about "drag and drop" as much as the Product Manager does. I care that the math is right. If we are off by a fraction of a percent on a mortality table, we lose millions of dollars ten years from now.
+I need precision, version control, and I need you to stop mangling my formulas.
+
+I don’t care about 'drag and drop' as much as the Product Manager does. I care that the math is right. If we are off by a fraction of a percent on a mortality table, we lose millions of dollars ten years from now.
 
 Stop Hard-Coding My Math:
 
-"Right now, I give IT a spreadsheet, and they 'interpret' it into Java code. That is terrifying. I want a Rules Engine where I can upload my rate tables directly. If I change a factor for 'Male, Non-Smoker, Age 45,' I want to do it myself, press save, and know it’s 100% accurate."
+Right now, I give IT a spreadsheet, and they 'interpret' it into Java code. That is terrifying. I want a Rules Engine where I can upload my rate tables directly. If I change a factor for 'Male, Non-Smoker, Age 45,' I want to do it myself, press save, and know it’s 100% accurate.
 
 Granularity is the Future:
 
-"We used to just have 'Smoker' and 'Non-Smoker.' Now, I need risk classes for 'Vaper,' 'Occasional Cigar User,' 'Marathon Runner,' and 'High BMI.' The system needs to handle infinite dimensions. Do not build a database that only has 5 columns for risk. I might need 50 columns next year."
+We used to just have 'Smoker' and 'Non-Smoker.' Now, I need risk classes for 'Vaper,' 'Occasional Cigar User,' 'Marathon Runner,' and 'High BMI.' The system needs to handle infinite dimensions. Do not build a database that only has 5 columns for risk. I might need 50 columns next year.
 
-The "Time Machine" Feature:
+The Time Machine Feature:
 
-"I need to know what the rates were on February 14th, 2022. If a policyholder calls in about a policy they bought three years ago, the system needs to be able to recreate the exact calculation logic from that specific day, not today's logic. We need strict Effective Dating on every single variable."
+I need to know what the rates were on February 14th, 2022. If a policyholder calls in about a policy they bought three years ago, the system needs to be able to recreate the exact calculation logic from that specific day, not today's logic. We need strict Effective Dating on every single variable.
 
 Testing My Own Hypotheses:
 
-"I want a 'Sandbox.' Let me upload a new experimental pricing structure and run it against our last 5,000 claims. Did we make money? Did we lose money? I want to run these simulations inside the product system before we ever launch."
+I want a 'Sandbox.' Let me upload a new experimental pricing structure and run it against our last 5,000 claims. Did we make money? Did we lose money? I want to run these simulations inside the product system before we ever launch.
 
 # 5
-And the Director of Compliance & Legal shared this:
-"I need an audit trail that will stand up in court."
+And the Director of Compliance & Legal shared this about how they want to use the system.
+
+I need an audit trail that will stand up in court.
 
 The Product Manager wants to go fast? Fine. My job is to make sure we don't crash. I view this system as a Risk Control Platform.
 
-The "State Exception" Nightmare:
+The 'State Exception' Nightmare:
 
-"You cannot treat the US as one country. It is 50 countries. New York, California, and Florida are the strictest. If the Product Manager tries to attach a 'Return of Premium' rider to a policy in Texas, the system must check: 'Is this rider filed and approved in Texas?' If the answer is No, the button should be grayed out. Period."
+You cannot treat the US as one country. It is 50 countries. New York, California, and Florida are the strictest. If the Product Manager tries to attach a 'Return of Premium' rider to a policy in Texas, the system must check: 'Is this rider filed and approved in Texas?' If the answer is No, the button should be grayed out. Period.
 
-The "Who/When/Why" Log (Audit Trails):
+The 'Who/When/Why' Log (Audit Trails):
 
-"If a regulator walks in and asks, 'Why did this customer's premium go up by $12 last month?', I need to be able to pull a report that says: 'User John Doe updated the Rate Table on Jan 1st, approved by Manager Jane Smith on Jan 2nd.' If the system can't tell me who changed a value, the system is useless to me."
+If a regulator walks in and asks, 'Why did this customer's premium go up by $12 last month?', I need to be able to pull a report that says: 'User John Doe updated the Rate Table on Jan 1st, approved by Manager Jane Smith on Jan 2nd.' If the system can't tell me who changed a value, the system is useless to me.
 
 Content Governance:
 
-"The PM mentioned the 'Welcome Kit.' Here is my problem: We change a product feature, but the PDF template for the customer letter sits on a different server. I want the Legal Disclaimer text to be a component of the product. If the product changes, the text should automatically update on the PDF. No more manual copy-pasting legal jargon."
+The PM mentioned the 'Welcome Kit.' Here is my problem: We change a product feature, but the PDF template for the customer letter sits on a different server. I want the Legal Disclaimer text to be a component of the product. If the product changes, the text should automatically update on the PDF. No more manual copy-pasting legal jargon.
 
 Collision Prevention:
 
-"I am very worried about 'Overlap.' We cannot sell 'Term Life Version A' and 'Term Life Version B' in the same zip code at the same time. The system needs logic that says: 'If Version B is Active, Version A is automatically Deactivated.' We cannot rely on humans to remember to flip the switch."
+I am very worried about 'Overlap.' We cannot sell 'Term Life Version A' and 'Term Life Version B' in the same zip code at the same time. The system needs logic that says: 'If Version B is Active, Version A is automatically Deactivated.' We cannot rely on humans to remember to flip the switch.
