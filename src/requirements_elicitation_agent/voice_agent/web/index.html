@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>Forge Requirements Assistant - Voice Interface v2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .pulse-ring {
+            animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 1; }
+            80%, 100% { transform: scale(2); opacity: 0; }
+        }
+        .recording-pulse {
+            animation: recording-pulse 1s ease-in-out infinite;
+        }
+        @keyframes recording-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold mb-2">🔥 Forge Requirements Assistant</h1>
+            <p class="text-gray-400">Voice-enabled requirements discovery</p>
+        </header>
+
+        <!-- Status Bar -->
+        <div id="status-bar" class="bg-gray-800 rounded-lg p-4 mb-6 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div id="status-indicator" class="w-3 h-3 rounded-full bg-gray-500"></div>
+                <span id="status-text" class="text-gray-300">Disconnected</span>
+            </div>
+            <div id="latency" class="text-gray-500 text-sm hidden">
+                Latency: <span id="latency-value">--</span>ms
+            </div>
+        </div>
+
+        <!-- Main Control -->
+        <div class="flex flex-col items-center mb-8">
+            <div class="relative">
+                <!-- Pulse ring (visible when recording) -->
+                <div id="pulse-ring" class="absolute inset-0 rounded-full bg-red-500 opacity-0"></div>
+                
+                <!-- Main button -->
+                <button 
+                    id="voice-btn"
+                    class="relative w-32 h-32 rounded-full bg-gradient-to-br from-orange-500 to-red-600 
+                           hover:from-orange-400 hover:to-red-500 transition-all duration-300
+                           flex items-center justify-center text-4xl shadow-lg
+                           disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled
+                >
+                    🎤
+                </button>
+            </div>
+            <p id="instruction" class="mt-4 text-gray-400">Click to start voice session</p>
+        </div>
+
+        <!-- Transcription Panel -->
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
+                <span>📝</span> Live Transcription
+            </h2>
+            <div id="transcription" class="min-h-[60px] text-gray-300 italic">
+                Waiting for speech...
+            </div>
+        </div>
+
+        <!-- Conversation Panel -->
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
+                <span>💬</span> Conversation
+            </h2>
+            <div id="conversation" class="space-y-4 max-h-96 overflow-y-auto">
+                <p class="text-gray-500 italic">Conversation will appear here...</p>
+            </div>
+        </div>
+
+        <!-- Activity Log -->
+        <details class="bg-gray-800 rounded-lg p-4">
+            <summary class="cursor-pointer font-semibold">📋 Activity Log</summary>
+            <div id="activity-log" class="mt-4 font-mono text-sm text-gray-400 max-h-48 overflow-y-auto space-y-1">
+            </div>
+        </details>
+    </div>
+
+    <script>
+        // Audio configuration - target for server
+        const TARGET_SAMPLE_RATE = 16000;
+        const CHANNELS = 1;
+        const BITS_PER_SAMPLE = 16;
+
+        // State
+        let ws = null;
+        let audioContext = null;
+        let mediaStream = null;
+        let audioWorklet = null;
+        let isRecording = false;
+        let isMuted = false; // Mute during TTS playback to prevent feedback
+        let playbackQueue = [];
+        let isPlaying = false;
+        let nativeSampleRate = 48000; // Will be updated
+        let allTtsReceived = false; // True when server has sent all TTS chunks
+
+        // DOM elements
+        const voiceBtn = document.getElementById('voice-btn');
+        const statusIndicator = document.getElementById('status-indicator');
+        const statusText = document.getElementById('status-text');
+        const pulseRing = document.getElementById('pulse-ring');
+        const instruction = document.getElementById('instruction');
+        const transcription = document.getElementById('transcription');
+        const conversation = document.getElementById('conversation');
+        const activityLog = document.getElementById('activity-log');
+        const latencyEl = document.getElementById('latency');
+        const latencyValue = document.getElementById('latency-value');
+
+        // Logging
+        function log(message) {
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.textContent = `[${time}] ${message}`;
+            activityLog.appendChild(entry);
+            activityLog.scrollTop = activityLog.scrollHeight;
+            console.log(`[${time}] ${message}`);
+        }
+
+        // Status updates
+        function setStatus(status, color) {
+            statusText.textContent = status;
+            statusIndicator.className = `w-3 h-3 rounded-full bg-${color}-500`;
+        }
+
+        // Update mic button to show muted/unmuted state
+        function updateMicStatus() {
+            if (isMuted) {
+                voiceBtn.textContent = '🔇';
+                voiceBtn.classList.remove('from-orange-500', 'to-red-600');
+                voiceBtn.classList.add('from-gray-500', 'to-gray-600');
+                instruction.textContent = 'Agent responding...';
+            } else {
+                voiceBtn.textContent = '🎤';
+                voiceBtn.classList.remove('from-gray-500', 'to-gray-600');
+                voiceBtn.classList.add('from-orange-500', 'to-red-600');
+                instruction.textContent = 'Listening...';
+            }
+        }
+
+        // Downsample audio from native rate to target rate
+        function downsample(inputBuffer, inputSampleRate, outputSampleRate) {
+            if (inputSampleRate === outputSampleRate) {
+                return inputBuffer;
+            }
+            const ratio = inputSampleRate / outputSampleRate;
+            const outputLength = Math.floor(inputBuffer.length / ratio);
+            const output = new Float32Array(outputLength);
+            
+            for (let i = 0; i < outputLength; i++) {
+                const srcIndex = Math.floor(i * ratio);
+                output[i] = inputBuffer[srcIndex];
+            }
+            return output;
+        }
+
+        // Initialize audio context
+        async function initAudio() {
+            try {
+                // Let browser choose native sample rate
+                audioContext = new AudioContext();
+                nativeSampleRate = audioContext.sampleRate;
+                log(`Audio context created (native rate: ${nativeSampleRate}Hz)`);
+                
+                // Request microphone access
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        channelCount: CHANNELS,
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true,
+                    }
+                });
+                
+                log('Microphone access granted');
+                voiceBtn.disabled = false;
+                setStatus('Ready', 'green');
+                instruction.textContent = 'Click to start voice session';
+                
+            } catch (err) {
+                log(`Microphone error: ${err.message}`);
+                setStatus('Microphone Error', 'red');
+                instruction.textContent = 'Please allow microphone access';
+            }
+        }
+
+        // Connect WebSocket
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            
+            ws = new WebSocket(wsUrl);
+            ws.binaryType = 'arraybuffer';
+            
+            ws.onopen = () => {
+                log('WebSocket connected');
+                setStatus('Connected', 'green');
+                startRecording();
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleServerEvent(data);
+            };
+            
+            ws.onclose = () => {
+                log('WebSocket disconnected');
+                setStatus('Disconnected', 'gray');
+                stopRecording();
+            };
+            
+            ws.onerror = (err) => {
+                log(`WebSocket error: ${err}`);
+                setStatus('Error', 'red');
+            };
+        }
+
+        // Handle server events
+        function handleServerEvent(event) {
+            switch (event.type) {
+                case 'stt_chunk':
+                    transcription.textContent = event.transcript || 'Listening...';
+                    transcription.classList.remove('italic');
+                    break;
+                    
+                case 'stt_output':
+                    transcription.textContent = event.transcript;
+                    addMessage('user', event.transcript);
+                    log(`Transcription: "${event.transcript}"`);
+                    // Mute immediately when we get a transcript - agent is about to respond
+                    if (!isMuted) {
+                        isMuted = true;
+                        updateMicStatus();
+                        log('Microphone muted (agent responding)');
+                    }
+                    break;
+                    
+                case 'agent_chunk':
+                    updateAgentMessage(event.text);
+                    break;
+                    
+                case 'agent_end':
+                    finalizeAgentMessage();
+                    log('Agent finished response');
+                    break;
+                    
+                case 'tts_chunk':
+                    queueAudio(event.audio);
+                    break;
+                    
+                case 'tts_end':
+                    allTtsReceived = true;
+                    log('All TTS audio received from server');
+                    // If nothing is playing, send playback complete now
+                    if (!isPlaying && playbackQueue.length === 0) {
+                        sendPlaybackComplete();
+                    }
+                    break;
+            }
+        }
+
+        function sendPlaybackComplete() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'playback_complete' }));
+                log('Sent playback_complete to server');
+                allTtsReceived = false;
+                
+                // Unmute after a short delay
+                setTimeout(() => {
+                    isMuted = false;
+                    updateMicStatus();
+                    log('Microphone unmuted - ready to listen');
+                }, 300);
+            }
+        }
+
+        // Conversation management
+        let currentAgentMessage = '';
+        let agentMessageEl = null;
+
+        function addMessage(role, content) {
+            const el = document.createElement('div');
+            el.className = role === 'user' 
+                ? 'bg-blue-900/50 rounded-lg p-3 ml-8'
+                : 'bg-gray-700/50 rounded-lg p-3 mr-8';
+            
+            const label = document.createElement('div');
+            label.className = 'text-xs text-gray-400 mb-1';
+            label.textContent = role === 'user' ? 'You' : 'Assistant';
+            
+            const text = document.createElement('div');
+            text.textContent = content;
+            
+            el.appendChild(label);
+            el.appendChild(text);
+            
+            // Remove placeholder if present
+            const placeholder = conversation.querySelector('.italic');
+            if (placeholder) placeholder.remove();
+            
+            conversation.appendChild(el);
+            conversation.scrollTop = conversation.scrollHeight;
+            
+            return el;
+        }
+
+        function updateAgentMessage(text) {
+            currentAgentMessage += text;
+            
+            if (!agentMessageEl) {
+                agentMessageEl = addMessage('assistant', currentAgentMessage);
+            } else {
+                agentMessageEl.querySelector('div:last-child').textContent = currentAgentMessage;
+                conversation.scrollTop = conversation.scrollHeight;
+            }
+        }
+
+        function finalizeAgentMessage() {
+            currentAgentMessage = '';
+            agentMessageEl = null;
+        }
+
+        // Audio recording
+        async function startRecording() {
+            if (!mediaStream || !audioContext) {
+                log('Error: No media stream or audio context');
+                return;
+            }
+            
+            // Resume audio context if suspended (required by browsers)
+            if (audioContext.state === 'suspended') {
+                await audioContext.resume();
+                log('Audio context resumed');
+            }
+            
+            isRecording = true;
+            voiceBtn.classList.add('recording-pulse');
+            pulseRing.classList.add('pulse-ring');
+            pulseRing.style.opacity = '0.3';
+            instruction.textContent = 'Listening... Click to stop';
+            
+            // Create audio processing
+            const source = audioContext.createMediaStreamSource(mediaStream);
+            
+            // Use ScriptProcessor for simplicity (AudioWorklet would be better for production)
+            const processor = audioContext.createScriptProcessor(4096, 1, 1);
+            
+            let chunkCount = 0;
+            processor.onaudioprocess = (e) => {
+                // Don't send audio when muted (during TTS playback) to prevent feedback loop
+                if (!isRecording || isMuted || !ws || ws.readyState !== WebSocket.OPEN) return;
+                
+                const inputData = e.inputBuffer.getChannelData(0);
+                
+                // Downsample to 16kHz
+                const downsampled = downsample(inputData, nativeSampleRate, TARGET_SAMPLE_RATE);
+                
+                // Convert float32 to int16
+                const int16Data = new Int16Array(downsampled.length);
+                for (let i = 0; i < downsampled.length; i++) {
+                    const s = Math.max(-1, Math.min(1, downsampled[i]));
+                    int16Data[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+                
+                // Send to server
+                ws.send(int16Data.buffer);
+                chunkCount++;
+                
+                if (chunkCount % 20 === 0) {
+                    log(`Sent ${chunkCount} audio chunks (${int16Data.length * 2} bytes each)`);
+                }
+            };
+            
+            source.connect(processor);
+            processor.connect(audioContext.destination);
+            
+            audioWorklet = { source, processor };
+            log(`Recording started (resampling ${nativeSampleRate}Hz -> ${TARGET_SAMPLE_RATE}Hz)`);
+        }
+
+        function stopRecording() {
+            isRecording = false;
+            voiceBtn.classList.remove('recording-pulse');
+            pulseRing.classList.remove('pulse-ring');
+            pulseRing.style.opacity = '0';
+            instruction.textContent = 'Click to start voice session';
+            
+            if (audioWorklet) {
+                audioWorklet.source.disconnect();
+                audioWorklet.processor.disconnect();
+                audioWorklet = null;
+            }
+            
+            log('Recording stopped');
+        }
+
+        // Audio playback
+        function queueAudio(base64Audio) {
+            const audioData = atob(base64Audio);
+            const bytes = new Uint8Array(audioData.length);
+            for (let i = 0; i < audioData.length; i++) {
+                bytes[i] = audioData.charCodeAt(i);
+            }
+            playbackQueue.push(bytes.buffer);
+            
+            // Start playback if not already playing
+            if (!isPlaying) {
+                playNextAudio();
+            }
+        }
+
+        async function playNextAudio() {
+            if (playbackQueue.length === 0) {
+                isPlaying = false;
+                // If all TTS has been received and queue is empty, notify server
+                if (allTtsReceived) {
+                    sendPlaybackComplete();
+                }
+                return;
+            }
+            
+            isPlaying = true;
+            const audioData = playbackQueue.shift();
+            
+            try {
+                // Convert PCM to AudioBuffer
+                const float32Data = new Float32Array(audioData.byteLength / 2);
+                const int16Data = new Int16Array(audioData);
+                
+                for (let i = 0; i < int16Data.length; i++) {
+                    float32Data[i] = int16Data[i] / 32768.0;
+                }
+                
+                const audioBuffer = audioContext.createBuffer(1, float32Data.length, 24000); // OpenAI TTS uses 24kHz
+                audioBuffer.getChannelData(0).set(float32Data);
+                
+                const source = audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(audioContext.destination);
+                source.onended = () => playNextAudio();
+                source.start();
+                
+            } catch (err) {
+                log(`Playback error: ${err.message}`);
+                playNextAudio();
+            }
+        }
+
+        // Button handler
+        voiceBtn.addEventListener('click', () => {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                connectWebSocket();
+            } else {
+                ws.close();
+            }
+        });
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            log('Initializing voice interface...');
+            initAudio();
+        });
+    </script>
+</body>
+</html>

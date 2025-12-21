@@ -9,9 +9,12 @@ import streamlit as st
 import uuid
 import sys
 import os
+import tempfile
 from pathlib import Path
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, AIMessage
+from audio_recorder_streamlit import audio_recorder
+from openai import OpenAI
 
 # Load environment variables from .env file
 load_dotenv()
@@ -20,6 +23,28 @@ load_dotenv()
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.requirements_elicitation_agent.graph import create_graph
+
+
+def transcribe_audio(audio_bytes: bytes) -> str:
+    """Transcribe audio bytes to text using OpenAI Whisper API."""
+    client = OpenAI()
+    
+    # Save audio to a temporary file (Whisper API requires a file)
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_audio:
+        temp_audio.write(audio_bytes)
+        temp_audio_path = temp_audio.name
+    
+    try:
+        with open(temp_audio_path, "rb") as audio_file:
+            transcript = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+                response_format="text"
+            )
+        return transcript.strip()
+    finally:
+        # Clean up temp file
+        os.unlink(temp_audio_path)
 
 
 # Page configuration (Task 5.1)
@@ -38,6 +63,8 @@ if "processed_files" not in st.session_state:
     st.session_state.processed_files = set()
 if "graph" not in st.session_state:
     st.session_state.graph = create_graph()
+if "audio_processed" not in st.session_state:
+    st.session_state.audio_processed = None
 
 # Title and description
 st.title("🔥 Forge Requirements Assistant")
@@ -48,9 +75,24 @@ I help you bridge the gap between vague ideas and executable software requiremen
 through interactive interviews and document analysis.
 """)
 
+# Voice interface link
+st.info("🎤 **Voice Interface Available!** Run the voice server with:\n```\npython src/requirements_elicitation_agent/voice_agent/run.py\n```\nThen open http://localhost:8000")
+
 # Sidebar (Task 5.2)
 with st.sidebar:
     st.header("Options")
+    
+    # Voice Input Section
+    st.subheader("🎤 Voice Input")
+    audio_bytes = audio_recorder(
+        text="Click to record",
+        recording_color="#e74c3c",
+        neutral_color="#3498db",
+        icon_size="2x",
+        pause_threshold=2.0,
+    )
+    
+    st.divider()
     
     # File uploader (Task 5.2)
     uploaded_file = st.file_uploader(
@@ -89,6 +131,11 @@ with st.sidebar:
 2. Answer my questions or review extracted requirements
 3. When ready, ask me to "show requirements"
 
+**Voice Input:**
+- Click the microphone to start recording
+- Speak clearly and pause when done
+- Your speech will be transcribed automatically
+
 **Tips:**
 - Be as specific as possible
 - I'll ask follow-up questions to clarify
@@ -121,6 +168,34 @@ if uploaded_file and uploaded_file.name not in st.session_state.processed_files:
                 st.session_state.messages.append({"role": "assistant", "content": last_msg.content})
     
     st.rerun()
+
+# Handle voice input
+if audio_bytes and audio_bytes != st.session_state.audio_processed:
+    st.session_state.audio_processed = audio_bytes
+    
+    with st.spinner("🎤 Transcribing your voice..."):
+        try:
+            transcribed_text = transcribe_audio(audio_bytes)
+            
+            if transcribed_text:
+                # Add user message
+                st.session_state.messages.append({"role": "human", "content": transcribed_text})
+                
+                # Process through agent
+                config = {"configurable": {"thread_id": st.session_state.thread_id}}
+                state = {"messages": [HumanMessage(content=transcribed_text)]}
+                
+                for event in st.session_state.graph.stream(state, config, stream_mode="values"):
+                    if "messages" in event and event["messages"]:
+                        last_msg = event["messages"][-1]
+                        if isinstance(last_msg, AIMessage):
+                            st.session_state.messages.append({"role": "assistant", "content": last_msg.content})
+                
+                st.rerun()
+            else:
+                st.warning("Could not transcribe audio. Please try again.")
+        except Exception as e:
+            st.error(f"Error transcribing audio: {str(e)}")
 
 # Display chat history (Task 5.3)
 for message in st.session_state.messages:
