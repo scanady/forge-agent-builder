@@ -56,6 +56,36 @@ Run the agent in CLI mode:
 python -m src.requirements_elicitation_agent.main
 ```
 
+### MCP Server
+
+Expose the agent as an MCP (Model Context Protocol) server for integration with other tools:
+
+```bash
+python -m src.requirements_elicitation_agent.mcp_server
+```
+
+Or add to your MCP client configuration (e.g., Claude Desktop):
+
+```json
+{
+  "mcpServers": {
+    "riley-requirements-analyst": {
+      "command": "python",
+      "args": ["-m", "src.requirements_elicitation_agent.mcp_server"],
+      "cwd": "/path/to/forge-agent-builder"
+    }
+  }
+}
+```
+
+**Available MCP Tools:**
+- `start_session` - Start a new requirements elicitation session
+- `send_message` - Send a message to Riley in an existing session
+- `upload_document` - Upload document content for requirement extraction
+- `get_requirements` - Get all captured requirements
+- `export_requirements_markdown` - Export requirements as formatted Markdown
+- `end_session` - End a session and clean up
+
 ### Programmatic Usage
 
 ```python

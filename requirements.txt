@@ -7,6 +7,9 @@ langchain-openai>=0.2.0
 pydantic>=2.0.0
 python-dotenv>=1.0.0
 
+# MCP Server
+mcp[cli]>=1.0.0
+
 # Frontend
 streamlit>=1.40.0
 
