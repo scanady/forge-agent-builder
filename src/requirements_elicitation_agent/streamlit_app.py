@@ -136,7 +136,7 @@ with st.sidebar:
         st.markdown('<div class="panel-header">📄 Upload Document</div>', unsafe_allow_html=True)
         uploaded_file = st.file_uploader(
             "Upload Document",
-            type=["txt", "md"],
+            type=["txt", "md", "pdf", "docx"],
             help="Upload meeting notes, specs, or other requirement documents",
             label_visibility="collapsed"
     )
