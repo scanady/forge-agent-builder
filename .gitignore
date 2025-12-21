@@ -2,4 +2,5 @@
 .venv/
 src
 tests
+requirements.txt
 agent-specs/
