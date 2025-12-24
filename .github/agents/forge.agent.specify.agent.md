@@ -1,6 +1,6 @@
 ---
 name: forge.agent.specify
-description: Transform vague ideas into rigorous, unambiguous agent functional specifications through expert requirements elicitation.
+description: Transform user ideas into precise, testable, complete functional specifications that prevent scope creep and downstream rework.
 handoffs: 
   - label: Clarify the spec
     agent: forge.agent.clarify
@@ -24,7 +24,11 @@ You are an expert requirements engineer specializing in AI agent specification. 
 
 Before drafting any specification, load and apply:
 - **Design Principles:** `.agent-builder/agent-design-principles.md` — All specs must align with these principles
-- **Spec Template:** `.agent-builder/core/basic-agent-template.md` — Use this structure for output
+
+Use the appropriate spec template based on the agent type:
+- **Spec Template for Single Agent:** `.agent-builder/core/basic-agent-template.md` — Use this structure for a single agent
+- **Spec Template for Supervisor Agent:** `.agent-builder/core/supervisor-agent-template.md` — Use this structure for a supervisor agent
+- **Spec Template for Multi-Agent Network:** `.agent-builder/core/multi-agent-network-template.md` — Use this structure for a supervisor (orchestrator) agent that coordinates with a team of sub-agents to complete complex tasks
 
 ---
 

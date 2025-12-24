@@ -79,12 +79,159 @@ Or add to your MCP client configuration (e.g., Claude Desktop):
 ```
 
 **Available MCP Tools:**
-- `start_session` - Start a new requirements elicitation session
-- `send_message` - Send a message to Riley in an existing session
-- `upload_document` - Upload document content for requirement extraction
-- `get_requirements` - Get all captured requirements
-- `export_requirements_markdown` - Export requirements as formatted Markdown
-- `end_session` - End a session and clean up
+- `begin-requirements-interview` - Start a new requirements elicitation session
+- `discuss-requirements` - Discover requirements through conversation
+- `analyze-document-for-requirements` - Extract requirements from documents
+- `review-captured-requirements` - See captured requirements
+- `generate-requirements-document` - Create formatted spec document
+- `conclude-interview` - End a session and clean up
+
+#### HTTP Streamable MCP Server Integration
+
+For web-based clients or REST-style API integrations:
+
+```bash
+# Run as HTTP server on port 8000
+python -m src.requirements_elicitation_agent.mcp_server --transport http --port 8000
+```
+
+**Client Integration Example (curl):**
+
+```bash
+# List available tools
+curl -X POST http://localhost:8000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
+
+# Start a session
+curl -X POST http://localhost:8000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"begin-requirements-interview","arguments":{}},"id":2}'
+
+# Send a message (replace SESSION_ID with actual ID from previous response)
+curl -X POST http://localhost:8000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"discuss-requirements","arguments":{"session_id":"SESSION_ID","message":"I need a user login system"}},"id":3}'
+```
+
+**Client Integration Example (JavaScript/TypeScript):**
+
+```typescript
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+
+// Connect to the HTTP MCP server
+const transport = new StreamableHTTPClientTransport(
+  new URL("http://localhost:8000/mcp")
+);
+
+const client = new Client(
+  { name: "my-requirements-app", version: "1.0.0" },
+  { capabilities: {} }
+);
+
+await client.connect(transport);
+
+// List available tools
+const tools = await client.listTools();
+
+// Start a session
+const startResult = await client.callTool({
+  name: "begin-requirements-interview",
+  arguments: {}
+});
+
+const sessionId = JSON.parse(startResult.content[0].text).session_id;
+
+// Send a message
+const messageResult = await client.callTool({
+  name: "discuss-requirements",
+  arguments: {
+    session_id: sessionId,
+    message: "I need to build a user authentication system"
+  }
+});
+
+// Get requirements
+const reqsResult = await client.callTool({
+  name: "review-captured-requirements",
+  arguments: { session_id: sessionId }
+});
+
+// Clean up
+await client.callTool({
+  name: "conclude-interview",
+  arguments: { session_id: sessionId }
+});
+```
+
+**Client Integration Example (Python):**
+
+```python
+import requests
+import json
+
+base_url = "http://localhost:8000/mcp"
+headers = {"Content-Type": "application/json"}
+
+# Initialize connection
+response = requests.post(base_url, headers=headers, json={
+    "jsonrpc": "2.0",
+    "method": "initialize",
+    "params": {
+        "protocolVersion": "2024-11-05",
+        "clientInfo": {"name": "my-app", "version": "1.0.0"},
+        "capabilities": {}
+    },
+    "id": 1
+})
+
+# Start a requirements session
+response = requests.post(base_url, headers=headers, json={
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": {
+        "name": "begin-requirements-interview",
+        "arguments": {"project_name": "My Project"}
+    },
+    "id": 2
+})
+result = response.json()["result"]["content"][0]["text"]
+session_id = json.loads(result)["session_id"]
+
+# Continue the conversation
+response = requests.post(base_url, headers=headers, json={
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": {
+        "name": "discuss-requirements",
+        "arguments": {
+            "session_id": session_id,
+            "message": "We need secure user authentication with OAuth support"
+        }
+    },
+    "id": 3
+})
+
+# Get captured requirements
+response = requests.post(base_url, headers=headers, json={
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": {
+        "name": "review-captured-requirements",
+        "arguments": {"session_id": session_id}
+    },
+    "id": 4
+})
+requirements = response.json()
+```
+
+#### Transport Comparison
+
+| Transport | Use Case | Endpoint |
+|-----------|----------|----------|
+| `stdio` (default) | Claude Desktop, local tools | stdin/stdout |
+| `http` | Web apps, REST APIs | `/mcp` |
 
 ### Programmatic Usage
 

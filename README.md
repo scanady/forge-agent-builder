@@ -64,7 +64,9 @@ Starting templates for building new agents:
 - **`supervisor-agent-template.md`**: Multi-agent supervisor pattern
 - **`tool-use-agent-template.md`**: Agent with tool/function calling
 
-## Quick Start
+## Quick Start 
+
+See **[GETTING STARTED](GETTING_STARTED.md)** for details.
 
 ### Create a New Agent
 
