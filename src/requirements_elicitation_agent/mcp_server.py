@@ -35,13 +35,10 @@ def with_timeout(timeout_seconds: int = TOOL_TIMEOUT):
     def decorator(func: Callable[..., dict]) -> Callable[..., dict]:
         @functools.wraps(func)
         def wrapper(*args, **kwargs) -> dict:
-            _log(f"Starting {func.__name__}...")
-            
             with ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(func, *args, **kwargs)
                 try:
                     result = future.result(timeout=timeout_seconds)
-                    _log(f"Completed {func.__name__}")
                     return result
                 except FuturesTimeoutError:
                     _log(f"TIMEOUT: {func.__name__} exceeded {timeout_seconds}s")
